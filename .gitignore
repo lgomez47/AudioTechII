@@ -17,3 +17,6 @@ utils.txt
 .github/workflows
 **/.DS_Store
 **/JuceLibraryCode
+**/Builds
+**/JuceLibraryCode
+
