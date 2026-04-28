@@ -70,5 +70,5 @@ private:
     
     void delay(juce::AudioBuffer<float> &buffer);
     
-    juce::AudioProcessorValueTreeState::ParameterLayout createParams();
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameters();
 };

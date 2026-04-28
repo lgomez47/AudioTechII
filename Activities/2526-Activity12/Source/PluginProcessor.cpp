@@ -19,8 +19,9 @@ _2526Activity12AudioProcessor::_2526Activity12AudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
 #endif
+apvts(*this, nullptr, "Parameters", createParameters())
 {
 }
 
@@ -28,6 +29,21 @@ _2526Activity12AudioProcessor::~_2526Activity12AudioProcessor()
 {
 }
 
+juce::AudioProcessorValueTreeState::ParameterLayout
+_2526Activity12AudioProcessor::createParameters()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "delayTime",                 // parameter ID (IMPORTANT)
+        "Delay Time",                // name shown in GUI
+        0.0f,                        // minimum value
+        5.0f,                        // maximum value
+        0.25f                        // default value
+    ));
+
+    return { params.begin(), params.end() };
+}
 //==============================================================================
 const juce::String _2526Activity12AudioProcessor::getName() const
 {
@@ -94,6 +110,16 @@ void _2526Activity12AudioProcessor::changeProgramName (int index, const juce::St
 void _2526Activity12AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     // initialize your variables here!
+    samplingRate = sampleRate;
+    bufferSize = samplesPerBlock;
+    
+    delayBufferSize = (int)(sampleRate * maxDelayLength);
+    
+    int numChannels = getTotalNumOutputChannels();
+    delayBuffer.setSize(numChannels, delayBufferSize);
+    delayBuffer.clear();
+    
+    writeTail = 0;
     
     
 }
@@ -151,6 +177,38 @@ void _2526Activity12AudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 void _2526Activity12AudioProcessor::delay(juce::AudioBuffer<float> &buffer)
 {
     // add your delay implementation here!
+    
+    int numChannels = buffer.getNumChannels();
+    
+    auto* delayParam = apvts.getRawParameterValue("delayTime");
+    auto delayLengthSec = delayParam->load();
+    
+    int delayInSamples = (int) (delayLengthSec * samplingRate);
+    
+    float dry = 0.5f;
+    float wet = 0.5f;
+    
+    for (int channel = 0; channel < numChannels; ++channel)
+    {
+        float* channelData = buffer.getWritePointer(channel);
+        float* delayData = delayBuffer.getWritePointer(channel);
+        
+        for (int i = 0; i < bufferSize; ++i)
+        {
+            int writeIndex = (writeTail + i) % delayBufferSize;
+            int readIndex = (writeIndex - delayInSamples + delayBufferSize) % delayBufferSize;
+            
+            float input = channelData[i];
+            
+            float delayed = delayData[readIndex];
+            
+            delayData[writeIndex] = input;
+            
+            channelData[i] = (dry * input) + (wet * delayed);
+        }
+    }
+    
+    writeTail = (writeTail + bufferSize) % delayBufferSize;
 }
 
 //==============================================================================
