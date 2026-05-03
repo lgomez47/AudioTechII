@@ -37,16 +37,26 @@ private:
     juce::AudioBuffer<float> delayBuffer;
 
     std::vector<int> writeHeads;
+    //float interpRead(float* delayData, int writeHead, float delaySamples);
+
 
     int delaySamples = 0;
     float delaySeconds = 0;
-    int maxDelayInSamples = 0;
+    int maxDelayInSamples = 48000;
     int delayBufferSize = 0;
 
-    double sampleRate;
+    double sampleRate = 48000;
     float mix = 0.5;
-    float feedback = 0.2;
+    float feedback = 0;
     
     juce::SmoothedValue<float> smoothedDelay;
+    //float currDelay;
+    
+   // void nextLfoVal();
+    //float phase = 0;
+   // float freq = 0.5;
+    //float amp = 0.1;
+  //  float lfo = 0;
+    
    
 };

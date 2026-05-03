@@ -19,14 +19,26 @@ _2526HW4AudioProcessor::_2526HW4AudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
 #endif
+    apvts(*this, nullptr, "Parameters", createParams())
 {
 }
 
 _2526HW4AudioProcessor::~_2526HW4AudioProcessor()
 {
 }
+
+juce::AudioProcessorValueTreeState::ParameterLayout
+    _2526HW4AudioProcessor::createParams()
+{
+    return {
+        std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"delay", 1}, "Delay length", 0.0, 2, 0.25),
+        std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"mix", 1}, "Mix", 0.0f, 1.0f, 0.5f),
+        std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"feedback", 1}, "Feedback", 0.0f, 0.95f, 0.3f)
+    };
+}
+
 
 //==============================================================================
 const juce::String _2526HW4AudioProcessor::getName() const
@@ -94,6 +106,11 @@ void _2526HW4AudioProcessor::changeProgramName (int index, const juce::String& n
 void _2526HW4AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     // call your initializing functions and set variables here!
+    samplingRate = sampleRate;
+    bufferSize = samplesPerBlock;
+    int maxDelay = maxDelaySec * samplingRate;
+    int numChannels = getTotalNumOutputChannels();
+    delay.prepare(samplingRate, maxDelay, numChannels);
 }
 
 void _2526HW4AudioProcessor::releaseResources()
@@ -130,6 +147,7 @@ bool _2526HW4AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
 
 void _2526HW4AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
@@ -138,6 +156,17 @@ void _2526HW4AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
+    
+    // get params
+    //auto* delayParam = apvts.getRawParameterValue("delay");
+    float delayLengthSec = *apvts.getRawParameterValue("delay");
+    float wetMix = *apvts.getRawParameterValue("mix");
+    float feedback = *apvts.getRawParameterValue("feedback");
+
+    delay.setDelayTime(delayLengthSec); // delay time to be used as samples
+    delay.setFeedbackAmt(feedback);
+    delay.setWetMix(wetMix);
+    
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
@@ -154,7 +183,7 @@ void _2526HW4AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 //==============================================================================
 bool _2526HW4AudioProcessor::hasEditor() const
 {
-    return false; // (change this to false if you choose to not supply an editor)
+    return true; // (change this to false if you choose to not supply an editor)
 }
 
 juce::AudioProcessorEditor* _2526HW4AudioProcessor::createEditor()
